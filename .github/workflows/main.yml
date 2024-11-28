@@ -1,12 +1,15 @@
-name: Dynamic Branch Workflow
+name: Deploy Docker Image with Env File
 
 on:
   workflow_dispatch:
     inputs:
       branch_name:
-        description: "Branch to process"
+        description: "Branch to fetch environment files from"
         required: true
         default: "master"
+      env_file:
+        description: "Environment file to use (set manually after fetching the list)"
+        required: true
       cluster_name:
         description: "EKS cluster name to log in to"
         required: true
@@ -14,27 +17,55 @@ on:
         description: "AWS region of the EKS cluster"
         required: true
         default: "us-east-1"
+      docker_image:
+        description: "Docker image to deploy (e.g., my-app:latest)"
+        required: true
 
 env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
 jobs:
-  dynamic-branch-job:
+  list-env-files:
     runs-on: ubuntu-latest
-
     steps:
-      # Step 1: Checkout the specified branch dynamically
+      # Step 1: Checkout the branch
       - name: Checkout Repository
         uses: actions/checkout@v3
         with:
           ref: ${{ github.event.inputs.branch_name }}
 
-      # Step 2: Display files in the selected branch
-      - name: List Files in Branch
+      # Step 2: List Environment Files
+      - name: List Env Files in Branch
         run: |
-          echo "Listing files in branch: ${{ github.event.inputs.branch_name }}"
-          ls -l
+          echo "Listing all environment files in branch: ${{ github.event.inputs.branch_name }}"
+          find . -type f -name "*.env" || echo "No environment files found"
+          echo "Manually select an environment file from the list above and re-trigger the workflow with the correct env_file input."
+          exit 0
+
+  deploy-docker-image:
+    needs: list-env-files
+    if: ${{ github.event.inputs.env_file != '' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the branch
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.branch_name }}
+
+      # Step 2: Fetch and Source the Env File
+      - name: Fetch and Source Env File
+        id: fetch_env
+        run: |
+          if [ ! -f "${{ github.event.inputs.env_file }}" ]; then
+            echo "Error: The specified environment file ${{ github.event.inputs.env_file }} does not exist"
+            exit 1
+          fi
+          echo "Using environment file: ${{ github.event.inputs.env_file }}"
+          source ${{ github.event.inputs.env_file }}
+          cat ${{ github.event.inputs.env_file }}
 
       # Step 3: Install AWS CLI
       - name: Install AWS CLI
@@ -60,3 +91,10 @@ jobs:
         run: |
           echo "Attempting to log in to Kubernetes cluster"
           kubectl get nodes
+
+      # Step 7: Deploy Docker Image
+      - name: Deploy Docker Image
+        run: |
+          echo "Deploying Docker image: ${{ github.event.inputs.docker_image }}"
+          kubectl set image deployment/my-deployment my-container=${{ github.event.inputs.docker_image }}
+          kubectl rollout status deployment/my-deployment
