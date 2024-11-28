@@ -6,7 +6,7 @@ on:
       branch_name:
         description: "Branch to fetch environment files from"
         required: true
-        default: "master"
+        default: "unified-env-lts"
       env_file:
         description: "Environment file to use (set manually after fetching the list)"
         required: true
