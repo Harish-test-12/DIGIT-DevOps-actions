@@ -3,6 +3,10 @@ name: Verify Cluster Login
 on:
   workflow_dispatch:
     inputs:
+      env_branch:
+        description: 'Branch to fetch environment files from'
+        required: true
+        default: 'unified-env-lts'
       cluster_name:
         description: 'EKS cluster name to log in to'
         required: true
