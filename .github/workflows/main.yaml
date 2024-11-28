@@ -1,0 +1,42 @@
+name: Verify Cluster Login
+
+on:
+  workflow_dispatch:
+    inputs:
+      cluster_name:
+        description: 'EKS cluster name to log in to'
+        required: true
+      region:
+        description: 'AWS region of the EKS cluster'
+        required: true
+        default: 'us-east-1'
+
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+jobs:
+  verify-cluster-login:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install AWS CLI
+        run: |
+          sudo apt-get update && sudo apt-get install -y awscli
+
+      - name: Configure AWS CLI
+        run: |
+          aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+          aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+          aws configure set default.region ${{ github.event.inputs.region }}
+
+      - name: Generate kubeconfig for EKS
+        run: |
+          echo "Generating kubeconfig for EKS cluster: ${{ github.event.inputs.cluster_name }}"
+          aws eks update-kubeconfig --name ${{ github.event.inputs.cluster_name }} --region ${{ github.event.inputs.region }}
+          kubectl config view
+
+      - name: Verify Cluster Login
+        run: |
+          echo "Attempting to log in to Kubernetes cluster"
+          kubectl get nodes
