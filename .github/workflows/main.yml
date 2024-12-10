@@ -26,7 +26,6 @@ env:
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
 jobs:
-  deploy-docker-image:
     needs: list-env-files
     if: ${{ github.event.inputs.env_file != '' }}
     runs-on: ubuntu-latest
@@ -41,31 +40,6 @@ jobs:
         id: fetch_env
         run: |
           ENV_FILE_PATH="deploy-as-code/helm/environments/${{ github.event.inputs.env_file }}"
-          if [ ! -f "$ENV_FILE_PATH" ]; then
-            echo "Error: The specified environment file $ENV_FILE_PATH does not exist"
-            exit 1
-          fi
-          echo "Using environment file: $ENV_FILE_PATH"
-          source $ENV_FILE_PATH
-          cat $ENV_FILE_PATH
-
-  deploy-docker-image:
-    needs: list-env-files
-    if: ${{ github.event.inputs.env_file != '' }}
-    runs-on: ubuntu-latest
-
-    steps:
-      # Step 1: Checkout the branch
-      - name: Checkout Repository
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ github.event.inputs.branch_name }}
-
-      # Step to fetch and source the env file
-      - name: Fetch and Source Env File
-        id: fetch_env
-        run: |
-          ENV_FILE_PATH="./deploy-as-code/helm/environments/${{ github.event.inputs.env_file }}"
           if [ ! -f "$ENV_FILE_PATH" ]; then
             echo "Error: The specified environment file $ENV_FILE_PATH does not exist"
             exit 1
