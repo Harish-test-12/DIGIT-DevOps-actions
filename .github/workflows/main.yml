@@ -46,8 +46,13 @@ jobs:
             exit 1
           fi
           echo "Using environment file: $ENV_FILE_PATH"
-          source $ENV_FILE_PATH
-          cat $ENV_FILE_PATH
+          
+          # Parse YAML using yq and export variables
+          export MY_VAR=$(yq e '.global.my_var' $ENV_FILE_PATH)
+          
+          # Print the environment variable to verify
+          echo "MY_VAR: $MY_VAR"
+
 
       # Step 3: Install AWS CLI
       - name: Install AWS CLI
