@@ -1,4 +1,4 @@
-name: Deploy Docker Image with Env File
+name: Deploy Service
 
 on:
   workflow_dispatch:
@@ -18,7 +18,7 @@ on:
         required: true
         default: "us-east-1"
       docker_image:
-        description: "Docker image to deploy (e.g., my-app:latest)"
+        description: "Docker image to deploy (e.g., egov-mdms-service:core-2.9-lts)"
         required: true
 
 env:
@@ -92,9 +92,36 @@ jobs:
           echo "Attempting to log in to Kubernetes cluster"
           kubectl get nodes
 
-      # Step 7: Deploy Docker Image
-      - name: Deploy Docker Image
+      # Step 7: Deploy Service
+      - name: Deploy Service
+        id: deploy_service
+        env:
+          DOCKER_IMAGE: ${{ github.event.inputs.docker_image }}
         run: |
-          echo "Deploying Docker image: ${{ github.event.inputs.docker_image }}"
-          kubectl set image deployment/my-deployment my-container=${{ github.event.inputs.docker_image }}
-          kubectl rollout status deployment/my-deployment
+          # Input: Docker image name
+          DOCKER_IMAGE=$DOCKER_IMAGE
+
+          # Extract service name from the Docker image
+          SERVICE_NAME=$(echo "$DOCKER_IMAGE" | cut -d':' -f1)
+
+          # Define the base charts directory
+          CHARTS_DIR="./deploy-as-code/helm/charts"
+
+          # Search for the chart directory containing the service name
+          CHART_DIR=$(find "$CHARTS_DIR" -type d -name "$SERVICE_NAME" -exec test -f {}/Chart.yaml \; -print -quit)
+
+          if [ -z "$CHART_DIR" ]; then
+              echo "Error: No Helm chart found for service '$SERVICE_NAME' in $CHARTS_DIR."
+              exit 1
+          fi
+
+          echo "Found Helm chart for '$SERVICE_NAME' at: $CHART_DIR"
+
+          # Deploy using Helm
+          helm upgrade --install "$SERVICE_NAME" "$CHART_DIR" -f "$CHART_DIR/values.yaml"
+
+      # Step 8: Verify Deployment
+      - name: Verify Deployment
+        run: |
+          echo "Verifying deployment for service: ${{ github.event.inputs.docker_image }}"
+          kubectl rollout status deployment/${{ github.event.inputs.docker_image }}
