@@ -26,20 +26,21 @@ env:
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
 jobs:
-    needs: list-env-files
-    if: ${{ github.event.inputs.env_file != '' }}
+  deploy-docker-image:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout the branch
       - name: Checkout Repository
         uses: actions/checkout@v3
         with:
           ref: ${{ github.event.inputs.branch_name }}
 
+      # Step 2: Fetch and Source the Env File
       - name: Fetch and Source Env File
         id: fetch_env
         run: |
-          ENV_FILE_PATH="deploy-as-code/helm/environments/${{ github.event.inputs.env_file }}"
+          ENV_FILE_PATH="./deploy-as-code/helm/environments/${{ github.event.inputs.env_file }}"
           if [ ! -f "$ENV_FILE_PATH" ]; then
             echo "Error: The specified environment file $ENV_FILE_PATH does not exist"
             exit 1
@@ -104,5 +105,6 @@ jobs:
       # Step 8: Verify Deployment
       - name: Verify Deployment
         run: |
-          echo "Verifying deployment for service: ${{ github.event.inputs.docker_image }}"
-          kubectl rollout status deployment/${{ github.event.inputs.docker_image }}
+          SERVICE_NAME=$(echo "${{ github.event.inputs.docker_image }}" | cut -d':' -f1)
+          echo "Verifying deployment for service: $SERVICE_NAME"
+          kubectl rollout status deployment/$SERVICE_NAME
