@@ -55,17 +55,18 @@ jobs:
         with:
           ref: ${{ github.event.inputs.branch_name }}
 
-      # Step 2: Fetch and Source the Env File
+      # Step to fetch and source the env file
       - name: Fetch and Source Env File
         id: fetch_env
         run: |
-          if [ ! -f "${{ github.event.inputs.env_file }}" ]; then
-            echo "Error: The specified environment file ${{ github.event.inputs.env_file }} does not exist"
+          ENV_FILE_PATH="deploy-as-code/helm/environments/${{ github.event.inputs.env_file }}"
+          if [ ! -f "$ENV_FILE_PATH" ]; then
+            echo "Error: The specified environment file $ENV_FILE_PATH does not exist"
             exit 1
           fi
-          echo "Using environment file: ${{ github.event.inputs.env_file }}"
-          source ${{ github.event.inputs.env_file }}
-          cat ${{ github.event.inputs.env_file }}
+          echo "Using environment file: $ENV_FILE_PATH"
+          source $ENV_FILE_PATH
+          cat $ENV_FILE_PATH
 
       # Step 3: Install AWS CLI
       - name: Install AWS CLI
