@@ -26,22 +26,28 @@ env:
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
 jobs:
-  list-env-files:
+  deploy-docker-image:
+    needs: list-env-files
+    if: ${{ github.event.inputs.env_file != '' }}
     runs-on: ubuntu-latest
+
     steps:
-      # Step 1: Checkout the branch
       - name: Checkout Repository
         uses: actions/checkout@v3
         with:
           ref: ${{ github.event.inputs.branch_name }}
 
-      # Step 2: List Environment Files
-      - name: List Env Files in Branch
+      - name: Fetch and Source Env File
+        id: fetch_env
         run: |
-          echo "Listing all environment files in branch: ${{ github.event.inputs.branch_name }}"
-          find . -type f -name "*.env" || echo "No environment files found"
-          echo "Manually select an environment file from the list above and re-trigger the workflow with the correct env_file input."
-          exit 0
+          ENV_FILE_PATH="deploy-as-code/helm/environments/${{ github.event.inputs.env_file }}"
+          if [ ! -f "$ENV_FILE_PATH" ]; then
+            echo "Error: The specified environment file $ENV_FILE_PATH does not exist"
+            exit 1
+          fi
+          echo "Using environment file: $ENV_FILE_PATH"
+          source $ENV_FILE_PATH
+          cat $ENV_FILE_PATH
 
   deploy-docker-image:
     needs: list-env-files
