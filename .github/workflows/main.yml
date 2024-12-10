@@ -59,7 +59,7 @@ jobs:
       - name: Fetch and Source Env File
         id: fetch_env
         run: |
-          ENV_FILE_PATH="deploy-as-code/helm/environments/${{ github.event.inputs.env_file }}"
+          ENV_FILE_PATH="./deploy-as-code/helm/environments/${{ github.event.inputs.env_file }}"
           if [ ! -f "$ENV_FILE_PATH" ]; then
             echo "Error: The specified environment file $ENV_FILE_PATH does not exist"
             exit 1
