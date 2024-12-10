@@ -121,9 +121,9 @@ jobs:
           helm upgrade --install "$SERVICE_NAME" "$CHART_DIR" -f "$CHART_DIR/values.yaml"
         shell: /usr/bin/bash -e {0}
         env:
-          AWS_ACCESS_KEY_ID: ***
-          AWS_SECRET_ACCESS_KEY: ***
-          DOCKER_IMAGE: playground:2.0
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          DOCKER_IMAGE: ${{ github.event.inputs.docker_image }}
 
       # Step 8: Verify Deployment
       - name: Verify Deployment
