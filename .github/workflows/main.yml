@@ -92,31 +92,38 @@ jobs:
 
       # Step 7: Deploy Service
       - name: Deploy Service
-        id: deploy_service
-        env:
-          DOCKER_IMAGE: ${{ github.event.inputs.docker_image }}
         run: |
           # Input: Docker image name
           DOCKER_IMAGE=$DOCKER_IMAGE
-
+          
           # Extract service name from the Docker image
           SERVICE_NAME=$(echo "$DOCKER_IMAGE" | cut -d':' -f1)
-
+          
           # Define the base charts directory
           CHARTS_DIR="./deploy-as-code/helm/charts"
-
+          
           # Search for the chart directory containing the service name
           CHART_DIR=$(find "$CHARTS_DIR" -type d -name "$SERVICE_NAME" -exec test -f {}/Chart.yaml \; -print -quit)
-
+          
           if [ -z "$CHART_DIR" ]; then
               echo "Error: No Helm chart found for service '$SERVICE_NAME' in $CHARTS_DIR."
               exit 1
           fi
-
+          
           echo "Found Helm chart for '$SERVICE_NAME' at: $CHART_DIR"
-
-          # Deploy using Helm
+          
+          # Step 1: Build Helm chart dependencies (resolve local charts)
+          echo "Building Helm chart dependencies..."
+          helm dependency build "$CHART_DIR"
+          
+          # Step 2: Deploy using Helm
+          echo "Deploying service using Helm..."
           helm upgrade --install "$SERVICE_NAME" "$CHART_DIR" -f "$CHART_DIR/values.yaml"
+        shell: /usr/bin/bash -e {0}
+        env:
+          AWS_ACCESS_KEY_ID: ***
+          AWS_SECRET_ACCESS_KEY: ***
+          DOCKER_IMAGE: playground:2.0
 
       # Step 8: Verify Deployment
       - name: Verify Deployment
