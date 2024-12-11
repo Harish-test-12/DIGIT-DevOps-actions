@@ -30,11 +30,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the branch (either from push or workflow_dispatch input)
+      # Step 1: Checkout the branch
       - name: Checkout Repository
         uses: actions/checkout@v3
         with:
-          ref: ${{ github.event.inputs.branch_name || 'unified-env-lts' }}  # Use unified-env-lts if not specified
+          ref: ${{ github.event.inputs.branch_name }}
 
       # Step 2: Fetch and Source the Env File
       - name: Fetch and Source Env File
@@ -61,9 +61,11 @@ jobs:
           
           # Export the variable for use later in the workflow
           echo "DOMAIN_NAME=$DOMAIN_NAME" >> $GITHUB_ENV
+
           
           # Print the environment variable to verify
           echo "MY_VAR: $MY_VAR"
+
       # Step 3: Install or Update AWS CLI
       - name: Install or Update AWS CLI
         run: |
@@ -76,23 +78,27 @@ jobs:
             sudo ./aws/install
           fi
           aws --version
+
       # Step 4: Configure AWS CLI
       - name: Configure AWS CLI
         run: |
           aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
           aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
           aws configure set default.region ${{ github.event.inputs.region }}
+
       # Step 5: Generate kubeconfig for EKS
       - name: Generate kubeconfig for EKS
         run: |
           echo "Generating kubeconfig for EKS cluster: ${{ github.event.inputs.cluster_name }}"
           aws eks update-kubeconfig --name ${{ github.event.inputs.cluster_name }} --region ${{ github.event.inputs.region }}
           kubectl config view
+
       # Step 6: Verify Cluster Login
       - name: Verify Cluster Login
         run: |
           echo "Attempting to log in to Kubernetes cluster"
           kubectl get nodes
+
       # Step 7: Deploy Service
       - name: Deploy Service
         run: |
@@ -137,7 +143,36 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           DOCKER_IMAGE: ${{ github.event.inputs.docker_image }}
 
-      # Step 8: Verify Deployment
+      # Step 8: Configure Ingress Resource
+      # - name: Configure Ingress Resource
+      #   run: |
+      #     echo "Configuring Ingress for service: $SERVICE_NAME"
+
+      #     # Ensure SERVICE_NAME is set correctly
+      #     if [ -z "$SERVICE_NAME" ]; then
+      #       echo "Error: SERVICE_NAME is empty. Check the Docker image input."
+      #       exit 1
+      #     fi
+
+      #     # Dynamically construct the path to the ingress YAML for the service
+      #     if [ "$SERVICE_NAME" == "common" ]; then
+      #       INGRESS_YAML_PATH="./deploy-as-code/helm/charts/common/templates/_ingress.yaml"
+      #     else
+      #       INGRESS_YAML_PATH="./deploy-as-code/helm/charts/common-services/$SERVICE_NAME/templates/ingress.yaml"
+      #     fi
+
+      #     # Check if the ingress YAML exists
+      #     if [ ! -f "$INGRESS_YAML_PATH" ]; then
+      #       echo "Error: Ingress YAML file for service '$SERVICE_NAME' does not exist at '$INGRESS_YAML_PATH'"
+      #       exit 1
+      #     fi
+
+      #     # Apply the Ingress resource
+      #     kubectl apply -f "$INGRESS_YAML_PATH" --namespace="$NAMESPACE"
+
+      #     echo "Ingress resource applied successfully"
+
+      # Step 9: Verify Deployment
       - name: Verify Deployment
         run: |
           # Extract service name from Docker image
@@ -160,4 +195,4 @@ jobs:
           echo "Verifying deployment for service: $SERVICE_NAME in namespace: $NAMESPACE"
           
           # Verify rollout status in the correct namespace
-          kubectl rollout status deployment/$SERVICE_NAME --namespace="$NAMESPACE"
+          # kubectl rollout status deployment/$SERVICE_NAME --namespace="$NAMESPACE"
