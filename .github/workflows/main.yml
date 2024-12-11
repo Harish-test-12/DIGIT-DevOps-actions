@@ -144,33 +144,33 @@ jobs:
           DOCKER_IMAGE: ${{ github.event.inputs.docker_image }}
 
       # Step 8: Configure Ingress Resource
-      - name: Configure Ingress Resource
-        run: |
-          echo "Configuring Ingress for service: $SERVICE_NAME"
+      # - name: Configure Ingress Resource
+      #   run: |
+      #     echo "Configuring Ingress for service: $SERVICE_NAME"
 
-          # Ensure SERVICE_NAME is set correctly
-          if [ -z "$SERVICE_NAME" ]; then
-            echo "Error: SERVICE_NAME is empty. Check the Docker image input."
-            exit 1
-          fi
+      #     # Ensure SERVICE_NAME is set correctly
+      #     if [ -z "$SERVICE_NAME" ]; then
+      #       echo "Error: SERVICE_NAME is empty. Check the Docker image input."
+      #       exit 1
+      #     fi
 
-          # Dynamically construct the path to the ingress YAML for the service
-          if [ "$SERVICE_NAME" == "common" ]; then
-            INGRESS_YAML_PATH="./deploy-as-code/helm/charts/common/templates/_ingress.yaml"
-          else
-            INGRESS_YAML_PATH="./deploy-as-code/helm/charts/common-services/$SERVICE_NAME/templates/ingress.yaml"
-          fi
+      #     # Dynamically construct the path to the ingress YAML for the service
+      #     if [ "$SERVICE_NAME" == "common" ]; then
+      #       INGRESS_YAML_PATH="./deploy-as-code/helm/charts/common/templates/_ingress.yaml"
+      #     else
+      #       INGRESS_YAML_PATH="./deploy-as-code/helm/charts/common-services/$SERVICE_NAME/templates/ingress.yaml"
+      #     fi
 
-          # Check if the ingress YAML exists
-          if [ ! -f "$INGRESS_YAML_PATH" ]; then
-            echo "Error: Ingress YAML file for service '$SERVICE_NAME' does not exist at '$INGRESS_YAML_PATH'"
-            exit 1
-          fi
+      #     # Check if the ingress YAML exists
+      #     if [ ! -f "$INGRESS_YAML_PATH" ]; then
+      #       echo "Error: Ingress YAML file for service '$SERVICE_NAME' does not exist at '$INGRESS_YAML_PATH'"
+      #       exit 1
+      #     fi
 
-          # Apply the Ingress resource
-          kubectl apply -f "$INGRESS_YAML_PATH" --namespace="$NAMESPACE"
+      #     # Apply the Ingress resource
+      #     kubectl apply -f "$INGRESS_YAML_PATH" --namespace="$NAMESPACE"
 
-          echo "Ingress resource applied successfully"
+      #     echo "Ingress resource applied successfully"
 
       # Step 9: Verify Deployment
       - name: Verify Deployment
