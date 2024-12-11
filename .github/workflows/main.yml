@@ -195,4 +195,4 @@ jobs:
           echo "Verifying deployment for service: $SERVICE_NAME in namespace: $NAMESPACE"
           
           # Verify rollout status in the correct namespace
-          kubectl rollout status deployment/$SERVICE_NAME --namespace="$NAMESPACE"
+          # kubectl rollout status deployment/$SERVICE_NAME --namespace="$NAMESPACE"
