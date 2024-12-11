@@ -129,7 +129,25 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           DOCKER_IMAGE: ${{ github.event.inputs.docker_image }}
 
-      # Step 8: Verify Deployment
+      # Step 8: Configure Ingress Resource
+      - name: Configure Ingress Resource
+        run: |
+          echo "Configuring Ingress for service: $SERVICE_NAME"
+          
+          # Define Ingress YAML file path (adjust as per your configuration)
+          INGRESS_YAML_PATH="./deploy-as-code/helm/charts/$SERVICE_NAME/templates/ingress.yaml"
+          
+          if [ ! -f "$INGRESS_YAML_PATH" ]; then
+            echo "Error: Ingress YAML file for service '$SERVICE_NAME' does not exist"
+            exit 1
+          fi
+          
+          # Apply the Ingress resource
+          kubectl apply -f "$INGRESS_YAML_PATH" --namespace="$NAMESPACE"
+          
+          echo "Ingress resource applied successfully"
+
+      # Step 9: Verify Deployment
       - name: Verify Deployment
         run: |
           # Extract service name from Docker image
