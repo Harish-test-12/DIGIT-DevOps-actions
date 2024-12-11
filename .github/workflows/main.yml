@@ -112,9 +112,17 @@ jobs:
           echo "Building Helm chart dependencies..."
           helm dependency build "$CHART_DIR"
           
-          # Step 2: Deploy using Helm
+          # Step 2: Detect namespace from Helm chart
+          NAMESPACE=$(yq e '.namespace // "default"' "$CHART_DIR/values.yaml")
+          
+          echo "Using namespace: $NAMESPACE"
+          
+          # Step 3: Deploy using Helm
           echo "Deploying service using Helm..."
-          helm upgrade --install "$SERVICE_NAME" "$CHART_DIR" -f "$CHART_DIR/values.yaml" --set image.tag="${DOCKER_IMAGE##*:}"
+          helm upgrade --install "$SERVICE_NAME" "$CHART_DIR" \
+            --namespace "$NAMESPACE" \
+            -f "$CHART_DIR/values.yaml" \
+            --set image.tag="${DOCKER_IMAGE##*:}"
         shell: /usr/bin/bash -e {0}
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
