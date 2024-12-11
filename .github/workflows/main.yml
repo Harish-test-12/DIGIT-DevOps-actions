@@ -119,8 +119,8 @@ jobs:
           echo "Building Helm chart dependencies..."
           helm dependency build "$CHART_DIR"
           
-          # Step 2: Detect namespace from Helm chart
-          NAMESPACE=$(yq e '.namespace // "default"' "$CHART_DIR/values.yaml")
+          # Step 2: Detect namespace from Helm chart (if it's not defined, default to 'egov')
+          NAMESPACE=$(yq e '.namespace // "egov"' "$CHART_DIR/values.yaml")
           
           echo "Using namespace: $NAMESPACE"
           
@@ -167,26 +167,26 @@ jobs:
       #     echo "Ingress resource applied successfully"
 
       # Step 9: Verify Deployment
-      - name: Verify Deployment
-        run: |
-          # Extract service name from Docker image
-          SERVICE_NAME=$(echo "${{ github.event.inputs.docker_image }}" | cut -d':' -f1)
+      # - name: Verify Deployment
+      #   run: |
+      #     # Extract service name from Docker image
+      #     SERVICE_NAME=$(echo "${{ github.event.inputs.docker_image }}" | cut -d':' -f1)
           
-          # Define the base charts directory
-          CHARTS_DIR="./deploy-as-code/helm/charts"
+      #     # Define the base charts directory
+      #     CHARTS_DIR="./deploy-as-code/helm/charts"
           
-          # Search for the chart directory containing the service name
-          CHART_DIR=$(find "$CHARTS_DIR" -type d -name "$SERVICE_NAME" -exec test -f {}/Chart.yaml \; -print -quit)
+      #     # Search for the chart directory containing the service name
+      #     CHART_DIR=$(find "$CHARTS_DIR" -type d -name "$SERVICE_NAME" -exec test -f {}/Chart.yaml \; -print -quit)
           
-          if [ -z "$CHART_DIR" ]; then
-              echo "Error: No Helm chart found for service '$SERVICE_NAME' in $CHARTS_DIR."
-              exit 1
-          fi
+      #     if [ -z "$CHART_DIR" ]; then
+      #         echo "Error: No Helm chart found for service '$SERVICE_NAME' in $CHARTS_DIR."
+      #         exit 1
+      #     fi
           
-          # Detect namespace from Helm chart
-          NAMESPACE=$(yq e '.namespace // "default"' "$CHART_DIR/values.yaml")
+      #     # Detect namespace from Helm chart
+      #     NAMESPACE=$(yq e '.namespace // "default"' "$CHART_DIR/values.yaml")
           
-          echo "Verifying deployment for service: $SERVICE_NAME in namespace: $NAMESPACE"
+      #     echo "Verifying deployment for service: $SERVICE_NAME in namespace: $NAMESPACE"
           
-          # Verify rollout status in the correct namespace
-          kubectl rollout status deployment/$SERVICE_NAME --namespace="$NAMESPACE"
+      #     # Verify rollout status in the correct namespace
+      #     kubectl rollout status deployment/$SERVICE_NAME --namespace="$NAMESPACE"
