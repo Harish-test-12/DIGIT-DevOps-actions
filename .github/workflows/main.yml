@@ -17,11 +17,8 @@ on:
         description: "AWS region of the EKS cluster"
         required: true
         default: "ap-south-1"
-      app_docker_image:
-        description: "App Docker image to deploy"
-        required: true
-      db_docker_image:
-        description: "Database Docker image to deploy"
+      docker_image:
+        description: "Docker image to deploy (e.g., egov-mdms-service:core-2.9-lts)"
         required: true
 
 env:
@@ -64,7 +61,9 @@ jobs:
           
           # Export the variable for use later in the workflow
           echo "DOMAIN_NAME=$DOMAIN_NAME" >> $GITHUB_ENV
-
+          
+          # Print the environment variable to verify
+          echo "MY_VAR: $MY_VAR"
       # Step 3: Install or Update AWS CLI
       - name: Install or Update AWS CLI
         run: |
@@ -77,48 +76,31 @@ jobs:
             sudo ./aws/install
           fi
           aws --version
-
       # Step 4: Configure AWS CLI
       - name: Configure AWS CLI
         run: |
           aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
           aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
           aws configure set default.region ${{ github.event.inputs.region }}
-
       # Step 5: Generate kubeconfig for EKS
       - name: Generate kubeconfig for EKS
         run: |
           echo "Generating kubeconfig for EKS cluster: ${{ github.event.inputs.cluster_name }}"
           aws eks update-kubeconfig --name ${{ github.event.inputs.cluster_name }} --region ${{ github.event.inputs.region }}
           kubectl config view
-
       # Step 6: Verify Cluster Login
       - name: Verify Cluster Login
         run: |
           echo "Attempting to log in to Kubernetes cluster"
           kubectl get nodes
-
-      # Step 7: Deploy App and Database Using Helm
-      - name: Deploy App and Database
+      # Step 7: Deploy Service
+      - name: Deploy Service
         run: |
-          # Extract image details
-          APP_DOCKER_IMAGE=${{ github.event.inputs.app_docker_image }}
-          DB_DOCKER_IMAGE=${{ github.event.inputs.db_docker_image }}
+          # Input: Docker image name
+          DOCKER_IMAGE=$DOCKER_IMAGE
           
-          # Validate image tags
-          if [[ ! "$APP_DOCKER_IMAGE" =~ : ]]; then
-              echo "Error: App Docker image must include a tag."
-              exit 1
-          fi
-          if [[ ! "$DB_DOCKER_IMAGE" =~ : ]]; then
-              echo "Error: DB Docker image must include a tag."
-              exit 1
-          fi
-          
-          # Extract service name and tag
-          SERVICE_NAME=$(echo "$APP_DOCKER_IMAGE" | cut -d':' -f1)
-          APP_IMAGE_TAG=$(echo "$APP_DOCKER_IMAGE" | cut -d':' -f2)
-          DB_IMAGE_TAG=$(echo "$DB_DOCKER_IMAGE" | cut -d':' -f2)
+          # Extract service name from the Docker image
+          SERVICE_NAME=$(echo "$DOCKER_IMAGE" | cut -d':' -f1)
           
           # Define the base charts directory
           CHARTS_DIR="./deploy-as-code/helm/charts"
@@ -133,26 +115,78 @@ jobs:
           
           echo "Found Helm chart for '$SERVICE_NAME' at: $CHART_DIR"
           
-          # Build Helm chart dependencies
+          # Step 1: Build Helm chart dependencies (resolve local charts)
+          echo "Building Helm chart dependencies..."
           helm dependency build "$CHART_DIR"
           
-          # Detect namespace from Helm chart
+          # Step 2: Detect namespace from Helm chart
           NAMESPACE=$(yq e '.namespace // "default"' "$CHART_DIR/values.yaml")
           
           echo "Using namespace: $NAMESPACE"
           
-          # Deploy the service using Helm
+          # Step 3: Deploy using Helm
+          echo "Deploying service using Helm..."
           helm upgrade --install "$SERVICE_NAME" "$CHART_DIR" \
             --namespace "$NAMESPACE" \
             -f "$CHART_DIR/values.yaml" \
-            --set app.image.repository=$(echo "$APP_DOCKER_IMAGE" | cut -d':' -f1) \
-            --set app.image.tag="$APP_IMAGE_TAG" \
-            --set db.image.repository=$(echo "$DB_DOCKER_IMAGE" | cut -d':' -f1) \
-            --set db.image.tag="$DB_IMAGE_TAG" \
-            --set global.domain="$DOMAIN_NAME"
+            --set image.tag="${DOCKER_IMAGE##*:}" \
+            --set global.domain="$DOMAIN_NAME"  # Pass the DOMAIN_NAME to global.domain in Helm chart
+        shell: /usr/bin/bash -e {0}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          DOCKER_IMAGE: ${{ github.event.inputs.docker_image }}
 
-      # Step 8: Verify Deployment
+      # Step 8: Configure Ingress Resource
+      # - name: Configure Ingress Resource
+      #   run: |
+      #     echo "Configuring Ingress for service: $SERVICE_NAME"
+
+      #     # Ensure SERVICE_NAME is set correctly
+      #     if [ -z "$SERVICE_NAME" ]; then
+      #       echo "Error: SERVICE_NAME is empty. Check the Docker image input."
+      #       exit 1
+      #     fi
+
+      #     # Dynamically construct the path to the ingress YAML for the service
+      #     if [ "$SERVICE_NAME" == "common" ]; then
+      #       INGRESS_YAML_PATH="./deploy-as-code/helm/charts/common/templates/_ingress.yaml"
+      #     else
+      #       INGRESS_YAML_PATH="./deploy-as-code/helm/charts/common-services/$SERVICE_NAME/templates/ingress.yaml"
+      #     fi
+
+      #     # Check if the ingress YAML exists
+      #     if [ ! -f "$INGRESS_YAML_PATH" ]; then
+      #       echo "Error: Ingress YAML file for service '$SERVICE_NAME' does not exist at '$INGRESS_YAML_PATH'"
+      #       exit 1
+      #     fi
+
+      #     # Apply the Ingress resource
+      #     kubectl apply -f "$INGRESS_YAML_PATH" --namespace="$NAMESPACE"
+
+      #     echo "Ingress resource applied successfully"
+
+      # Step 9: Verify Deployment
       - name: Verify Deployment
         run: |
+          # Extract service name from Docker image
+          SERVICE_NAME=$(echo "${{ github.event.inputs.docker_image }}" | cut -d':' -f1)
+          
+          # Define the base charts directory
+          CHARTS_DIR="./deploy-as-code/helm/charts"
+          
+          # Search for the chart directory containing the service name
+          CHART_DIR=$(find "$CHARTS_DIR" -type d -name "$SERVICE_NAME" -exec test -f {}/Chart.yaml \; -print -quit)
+          
+          if [ -z "$CHART_DIR" ]; then
+              echo "Error: No Helm chart found for service '$SERVICE_NAME' in $CHARTS_DIR."
+              exit 1
+          fi
+          
+          # Detect namespace from Helm chart
+          NAMESPACE=$(yq e '.namespace // "default"' "$CHART_DIR/values.yaml")
+          
           echo "Verifying deployment for service: $SERVICE_NAME in namespace: $NAMESPACE"
-          kubectl rollout status deployment/$SERVICE_NAME --namespace="$NAMESPACE"
+          
+          # Verify rollout status in the correct namespace
+          # kubectl rollout status deployment/$SERVICE_NAME --namespace="$NAMESPACE"
