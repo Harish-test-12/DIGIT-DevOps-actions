@@ -41,14 +41,27 @@ jobs:
         id: fetch_env
         run: |
           ENV_FILE_PATH="./deploy-as-code/helm/environments/${{ github.event.inputs.env_file }}"
+          
           if [ ! -f "$ENV_FILE_PATH" ]; then
             echo "Error: The specified environment file $ENV_FILE_PATH does not exist"
             exit 1
           fi
+          
           echo "Using environment file: $ENV_FILE_PATH"
           
-          # Parse YAML using yq and export variables
-          export MY_VAR=$(yq e '.global.my_var' $ENV_FILE_PATH)
+          # Extract domain name under the global section using yq
+          DOMAIN_NAME=$(yq e '.global.domain' $ENV_FILE_PATH)
+          
+          if [ -z "$DOMAIN_NAME" ]; then
+            echo "Error: Domain name not found in the environment file"
+            exit 1
+          fi
+          
+          echo "Domain Name: $DOMAIN_NAME"
+          
+          # Export the variable for use later in the workflow
+          echo "DOMAIN_NAME=$DOMAIN_NAME" >> $GITHUB_ENV
+
           
           # Print the environment variable to verify
           echo "MY_VAR: $MY_VAR"
@@ -102,8 +115,8 @@ jobs:
           CHART_DIR=$(find "$CHARTS_DIR" -type d -name "$SERVICE_NAME" -exec test -f {}/Chart.yaml \; -print -quit)
           
           if [ -z "$CHART_DIR" ]; then
-              echo "Error: No Helm chart found for service '$SERVICE_NAME' in $CHARTS_DIR."
-              exit 1
+            echo "Error: No Helm chart found for service '$SERVICE_NAME' in $CHARTS_DIR."
+            exit 1
           fi
           
           echo "Found Helm chart for '$SERVICE_NAME' at: $CHART_DIR"
@@ -122,12 +135,8 @@ jobs:
           helm upgrade --install "$SERVICE_NAME" "$CHART_DIR" \
             --namespace "$NAMESPACE" \
             -f "$CHART_DIR/values.yaml" \
-            --set image.tag="${DOCKER_IMAGE##*:}"
-        shell: /usr/bin/bash -e {0}
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          DOCKER_IMAGE: ${{ github.event.inputs.docker_image }}
+            --set image.tag="${DOCKER_IMAGE##*:}" \
+            --set global.domain="$DOMAIN_NAME"  # Pass the DOMAIN_NAME to global.domain in Helm chart
 
       # Step 8: Configure Ingress Resource
       - name: Configure Ingress Resource
