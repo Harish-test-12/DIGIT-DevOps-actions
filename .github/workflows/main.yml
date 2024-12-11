@@ -1,12 +1,13 @@
 name: Deploy Service
 
 on:
-  workflow_dispatch:
-    inputs:
-      branch_name:
-        description: "Branch to fetch environment files from"
-        required: true
-        default: "unified-env-lts"  # Set the default to unified-env-lts
+  push:
+    branches:
+      - 'unified-env-lts'
+      # branch_name:
+      #   description: "Branch to fetch environment files from"
+      #   required: true
+      #   default: "unified-env-lts"  # Set the default to unified-env-lts
       env_file:
         description: "Environment file to use (set manually after fetching the list)"
         required: true
