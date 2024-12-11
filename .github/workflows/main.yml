@@ -1,10 +1,6 @@
 name: Deploy Service
 
 on:
-  push:
-    branches:
-      - 'unified-env-lts'  # Trigger only when pushing to the unified-env-lts branch
-  
   workflow_dispatch:
     inputs:
       branch_name:
