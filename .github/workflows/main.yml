@@ -17,11 +17,11 @@ on:
         description: "AWS region of the EKS cluster"
         required: true
         default: "ap-south-1"
-      docker_image:
-        description: "Docker image to deploy (e.g., egov-mdms-service:core-2.9-lts)"
+      app_docker_image:
+        description: "App Docker image to deploy"
         required: true
       db_docker_image:
-        description: "Database Docker image to deploy (e.g., egov-mdms-db:latest)"
+        description: "Database Docker image to deploy"
         required: true
 
 env:
@@ -98,27 +98,34 @@ jobs:
           echo "Attempting to log in to Kubernetes cluster"
           kubectl get nodes
 
-      # Step 7: Deploy Application Service
-      - name: Deploy Application Service
+      # Step 7: Deploy App and DB Using Helm
+      - name: Deploy App and Database
         run: |
-          # Input: Docker image name for the app
-          APP_DOCKER_IMAGE=${{ github.event.inputs.docker_image }}
+          # Define the app Docker image from input
+          APP_DOCKER_IMAGE=${{ github.event.inputs.app_docker_image }}
           
-          # Extract service name from the Docker image
-          APP_SERVICE_NAME=$(echo "$APP_DOCKER_IMAGE" | cut -d':' -f1)
+          # Extract the service name and tag from the app Docker image
+          SERVICE_NAME=$(echo "$APP_DOCKER_IMAGE" | cut -d':' -f1 | sed 's/-app$//')
+          IMAGE_TAG=$(echo "$APP_DOCKER_IMAGE" | cut -d':' -f2)
+          
+          # Construct the DB Docker image name dynamically
+          DB_DOCKER_IMAGE="${SERVICE_NAME}-db:${IMAGE_TAG}"
+          
+          echo "App Docker Image: $APP_DOCKER_IMAGE"
+          echo "Database Docker Image: $DB_DOCKER_IMAGE"
           
           # Define the base charts directory
           CHARTS_DIR="./deploy-as-code/helm/charts"
           
           # Search for the chart directory containing the service name
-          CHART_DIR=$(find "$CHARTS_DIR" -type d -name "$APP_SERVICE_NAME" -exec test -f {}/Chart.yaml \; -print -quit)
+          CHART_DIR=$(find "$CHARTS_DIR" -type d -name "$SERVICE_NAME" -exec test -f {}/Chart.yaml \; -print -quit)
           
           if [ -z "$CHART_DIR" ]; then
-              echo "Error: No Helm chart found for app service '$APP_SERVICE_NAME' in $CHARTS_DIR."
+              echo "Error: No Helm chart found for service '$SERVICE_NAME' in $CHARTS_DIR."
               exit 1
           fi
           
-          echo "Found Helm chart for '$APP_SERVICE_NAME' at: $CHART_DIR"
+          echo "Found Helm chart for '$SERVICE_NAME' at: $CHART_DIR"
           
           # Step 1: Build Helm chart dependencies (resolve local charts)
           echo "Building Helm chart dependencies..."
@@ -129,80 +136,35 @@ jobs:
           
           echo "Using namespace: $NAMESPACE"
           
-          # Step 3: Deploy using Helm
-          echo "Deploying application service using Helm..."
-          helm upgrade --install "$APP_SERVICE_NAME" "$CHART_DIR" \
+          # Step 3: Deploy the app and database images using Helm
+          echo "Deploying service using Helm..."
+          helm upgrade --install "$SERVICE_NAME" "$CHART_DIR" \
             --namespace "$NAMESPACE" \
             -f "$CHART_DIR/values.yaml" \
-            --set image.tag="${APP_DOCKER_IMAGE##*:}" \
+            --set app.image.tag="${IMAGE_TAG}" \
+            --set db.image.tag="${IMAGE_TAG}" \
             --set global.domain="$DOMAIN_NAME"  # Pass the DOMAIN_NAME to global.domain in Helm chart
 
-      # Step 8: Deploy Database Service
-      - name: Deploy Database Service
-        run: |
-          # Input: Docker image name for the database
-          DB_DOCKER_IMAGE=${{ github.event.inputs.db_docker_image }}
-          
-          # Extract service name from the Docker image
-          DB_SERVICE_NAME=$(echo "$DB_DOCKER_IMAGE" | cut -d':' -f1)
-          
-          # Define the base charts directory for database service
-          CHARTS_DIR="./deploy-as-code/helm/charts"
-          
-          # Search for the chart directory containing the DB service name
-          CHART_DIR=$(find "$CHARTS_DIR" -type d -name "$DB_SERVICE_NAME" -exec test -f {}/Chart.yaml \; -print -quit)
-          
-          if [ -z "$CHART_DIR" ]; then
-              echo "Error: No Helm chart found for DB service '$DB_SERVICE_NAME' in $CHARTS_DIR."
-              exit 1
-          fi
-          
-          echo "Found Helm chart for DB service '$DB_SERVICE_NAME' at: $CHART_DIR"
-          
-          # Step 1: Build Helm chart dependencies (resolve local charts)
-          echo "Building Helm chart dependencies for DB..."
-          helm dependency build "$CHART_DIR"
-          
-          # Step 2: Detect namespace from Helm chart
-          NAMESPACE=$(yq e '.namespace // "default"' "$CHART_DIR/values.yaml")
-          
-          echo "Using namespace for DB: $NAMESPACE"
-          
-          # Step 3: Deploy database using Helm
-          echo "Deploying database service using Helm..."
-          helm upgrade --install "$DB_SERVICE_NAME" "$CHART_DIR" \
-            --namespace "$NAMESPACE" \
-            -f "$CHART_DIR/values.yaml" \
-            --set image.tag="${DB_DOCKER_IMAGE##*:}" \
-            --set global.domain="$DOMAIN_NAME"  # Pass the DOMAIN_NAME to global.domain in Helm chart
-
-      # Step 9: Verify Deployment
+      # Step 8: Verify Deployment
       - name: Verify Deployment
         run: |
-          # Extract service name from Docker image for app
-          APP_SERVICE_NAME=$(echo "${{ github.event.inputs.docker_image }}" | cut -d':' -f1)
+          # Extract service name from Docker image
+          SERVICE_NAME=$(echo "${{ github.event.inputs.app_docker_image }}" | cut -d':' -f1)
           
           # Define the base charts directory
           CHARTS_DIR="./deploy-as-code/helm/charts"
           
           # Search for the chart directory containing the service name
-          CHART_DIR=$(find "$CHARTS_DIR" -type d -name "$APP_SERVICE_NAME" -exec test -f {}/Chart.yaml \; -print -quit)
+          CHART_DIR=$(find "$CHARTS_DIR" -type d -name "$SERVICE_NAME" -exec test -f {}/Chart.yaml \; -print -quit)
           
           if [ -z "$CHART_DIR" ]; then
-              echo "Error: No Helm chart found for service '$APP_SERVICE_NAME' in $CHARTS_DIR."
+              echo "Error: No Helm chart found for service '$SERVICE_NAME' in $CHARTS_DIR."
               exit 1
           fi
           
           # Detect namespace from Helm chart
           NAMESPACE=$(yq e '.namespace // "default"' "$CHART_DIR/values.yaml")
           
-          echo "Verifying deployment for service: $APP_SERVICE_NAME in namespace: $NAMESPACE"
+          echo "Verifying deployment for service: $SERVICE_NAME in namespace: $NAMESPACE"
           
-          # Verify rollout status for app service
-          kubectl rollout status deployment/$APP_SERVICE_NAME --namespace="$NAMESPACE"
-          
-          # Extract service name for DB deployment
-          DB_SERVICE_NAME=$(echo "${{ github.event.inputs.db_docker_image }}" | cut -d':' -f1)
-          
-          # Verify rollout status for DB service
-          kubectl rollout status deployment/$DB_SERVICE_NAME --namespace="$NAMESPACE"
+          kubectl rollout status deployment/$SERVICE_NAME --namespace="$NAMESPACE"
