@@ -6,7 +6,7 @@ on:
       branch_name:
         description: "Branch to fetch environment files from"
         required: true
-        default: "unified-env-lts"  # Default value for branch_name is unified-env-lts
+        default: "unified-env-lts"
       env_file:
         description: "Environment file to use (set manually after fetching the list)"
         required: true
@@ -137,36 +137,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           DOCKER_IMAGE: ${{ github.event.inputs.docker_image }}
 
-      # Step 8: Configure Ingress Resource
-      # - name: Configure Ingress Resource
-      #   run: |
-      #     echo "Configuring Ingress for service: $SERVICE_NAME"
-
-      #     # Ensure SERVICE_NAME is set correctly
-      #     if [ -z "$SERVICE_NAME" ]; then
-      #       echo "Error: SERVICE_NAME is empty. Check the Docker image input."
-      #       exit 1
-      #     fi
-
-      #     # Dynamically construct the path to the ingress YAML for the service
-      #     if [ "$SERVICE_NAME" == "common" ]; then
-      #       INGRESS_YAML_PATH="./deploy-as-code/helm/charts/common/templates/_ingress.yaml"
-      #     else
-      #       INGRESS_YAML_PATH="./deploy-as-code/helm/charts/common-services/$SERVICE_NAME/templates/ingress.yaml"
-      #     fi
-
-      #     # Check if the ingress YAML exists
-      #     if [ ! -f "$INGRESS_YAML_PATH" ]; then
-      #       echo "Error: Ingress YAML file for service '$SERVICE_NAME' does not exist at '$INGRESS_YAML_PATH'"
-      #       exit 1
-      #     fi
-
-      #     # Apply the Ingress resource
-      #     kubectl apply -f "$INGRESS_YAML_PATH" --namespace="$NAMESPACE"
-
-      #     echo "Ingress resource applied successfully"
-
-      # Step 9: Verify Deployment
+      # Step 8: Verify Deployment
       - name: Verify Deployment
         run: |
           # Extract service name from Docker image
@@ -189,4 +160,4 @@ jobs:
           echo "Verifying deployment for service: $SERVICE_NAME in namespace: $NAMESPACE"
           
           # Verify rollout status in the correct namespace
-          # kubectl rollout status deployment/$SERVICE_NAME --namespace="$NAMESPACE"
+          kubectl rollout status deployment/$SERVICE_NAME --namespace="$NAMESPACE"
