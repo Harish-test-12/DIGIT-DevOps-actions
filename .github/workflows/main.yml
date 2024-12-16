@@ -20,6 +20,10 @@ on:
       docker_image:
         description: "Docker image to deploy (e.g., egov-mdms-service:core-2.9-lts)"
         required: true
+      deploy_secrets:
+        description: "Set to true to deploy secrets"
+        required: true
+        default: false
 
 env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -89,7 +93,35 @@ jobs:
         run: |
           echo "Attempting to log in to Kubernetes cluster"
           kubectl get nodes
-      # Step 7: Deploy Service
+
+      # Step 6: Deploy Secrets and Configs
+      - name: Deploy Secrets and Configs
+        if: ${{ github.event.inputs.deploy_secrets == 'true' }}
+        run: |
+          echo "Deploying secrets and cluster configurations..."
+          CONFIGS_DIR="./deploy-as-code/helm/charts/cluster-configs"
+          SECRETS_FILE="${CONFIGS_DIR}/secrets/${{ github.event.inputs.env_file }}-secrets.yaml"
+
+          if [ ! -f "$SECRETS_FILE" ]; then
+            echo "Error: Secrets file $SECRETS_FILE does not exist"
+            exit 1
+          fi
+
+          echo "Applying secrets..."
+          kubectl apply -f "$SECRETS_FILE"
+
+          echo "Applying cluster configuration files..."
+          for resource in secrets services ingress configmaps; do
+            RESOURCE_DIR="$CONFIGS_DIR/$resource"
+            if [ -d "$RESOURCE_DIR" ]; then
+              kubectl apply -f "$RESOURCE_DIR" --recursive
+              echo "Applied configurations from $RESOURCE_DIR"
+            else
+              echo "No configurations found for $resource"
+            fi
+          done
+
+      # Step 8: Deploy Service
       - name: Deploy Service
         run: |
           # Authenticate with Docker registry
