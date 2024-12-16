@@ -147,7 +147,7 @@ jobs:
               --namespace "$NAMESPACE" \
               -f "$CHART_DIR/values.yaml" \
               --set image.tag="${DOCKER_IMAGE##*:}" \
-              --set db.image.tag="${DB_IMAGE##*:}" \
+              --set initContainers.dbMigration.image.tag="${DB_IMAGE##*:}" \
               --set global.domain="$DOMAIN_NAME" \
               --set db.image.repository="$SERVICE_NAME-db"  # Explicitly set the db image repository
           else
