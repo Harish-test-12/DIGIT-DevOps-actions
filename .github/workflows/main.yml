@@ -58,7 +58,7 @@ jobs:
       - name: Fetch Container Registry
         id: fetch_registry
         run: |
-          COMMON_VALUES_PATH="./deploy-as-code/helm/common/values.yaml"
+          COMMON_VALUES_PATH="./deploy-as-code/helm/charts/common/values.yaml"
           if [ ! -f "$COMMON_VALUES_PATH" ]; then
             echo "Error: Common values file $COMMON_VALUES_PATH does not exist"
             exit 1
