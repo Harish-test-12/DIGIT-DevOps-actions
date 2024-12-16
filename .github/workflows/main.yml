@@ -108,6 +108,8 @@ jobs:
           echo "Application Image: $DOCKER_IMAGE"
           echo "Database Image: $DB_IMAGE"
           
+          docker pull "$DB_IMAGE"
+
           # Check if the DB image exists in the Docker repository
           echo "Checking if the database image exists..."
           if docker pull "$DB_IMAGE" &>/dev/null; then
