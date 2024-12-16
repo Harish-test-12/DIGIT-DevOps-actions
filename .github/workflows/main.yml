@@ -147,14 +147,18 @@ jobs:
             helm upgrade --install "$SERVICE_NAME" "$CHART_DIR" \
               --namespace "$NAMESPACE" \
               -f "$CHART_DIR/values.yaml" \
-              --set image.tag=egovio/"${DOCKER_IMAGE##*:}" \
-              --set db.image.tag=egovio/"${DB_IMAGE##*:}" \
+              --set image.repository="egovio/${DOCKER_IMAGE%%:*}" \
+              --set image.tag="${DOCKER_IMAGE##*:}" \
+              --set db.image.repository="egovio/${DB_IMAGE%%:*}" \
+              --set db.image.tag="${DB_IMAGE##*:}" \
               --set global.domain="$DOMAIN_NAME"
+
           else
             echo "Deploying only the application container..."
             helm upgrade --install "$SERVICE_NAME" "$CHART_DIR" \
               --namespace "$NAMESPACE" \
               -f "$CHART_DIR/values.yaml" \
+              --set image.repository="egovio/${DOCKER_IMAGE%%:*}" \
               --set image.tag="${DOCKER_IMAGE##*:}" \
               --set global.domain="$DOMAIN_NAME"
           fi
