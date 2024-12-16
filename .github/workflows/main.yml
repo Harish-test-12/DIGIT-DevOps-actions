@@ -149,8 +149,8 @@ jobs:
               -f "$CHART_DIR/values.yaml" \
               --set image.tag="${DOCKER_IMAGE##*:}" \
               --set db.image.tag="${DB_IMAGE##*:}" \
-              --set global.domain="$DOMAIN_NAME"
-
+              --set global.domain="$DOMAIN_NAME" \
+              --set db.image.repository="$SERVICE_NAME-db"  # Explicitly set the db image repository
           else
             echo "Deploying only the application container..."
             helm upgrade --install "$SERVICE_NAME" "$CHART_DIR" \
