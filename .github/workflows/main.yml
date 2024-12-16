@@ -107,12 +107,9 @@ jobs:
           
           echo "Application Image: $DOCKER_IMAGE"
           echo "Database Image: $DB_IMAGE"
-          
-          docker pull harish7303/"$DB_IMAGE"
-
           # Check if the DB image exists in the Docker repository
           echo "Checking if the database image exists..."
-          if docker pull "$DB_IMAGE" &>/dev/null; then
+          if docker pull harish7303/"$DB_IMAGE" &>/dev/null; then
             echo "Database image found: $DB_IMAGE"
             DB_EXISTS=true
           else
