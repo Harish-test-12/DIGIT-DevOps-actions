@@ -45,8 +45,9 @@ jobs:
           echo "Checking if SOPS is installed..."
           if ! command -v sops &> /dev/null; then
             echo "SOPS not found. Installing..."
-            curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo tee /etc/apt/trusted.gpg.d/hashicorp.asc
-            sudo apt-add-repository "deb https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+            SOPS_LATEST_VERSION=$(curl -s "https://api.github.com/repos/getsops/sops/releases/latest" | grep -Po '"tag_name": "v\K[0-9.]+')
+            curl -Lo sops.deb "https://github.com/getsops/sops/releases/download/v${SOPS_LATEST_VERSION}/sops_${SOPS_LATEST_VERSION}_amd64.deb"
+            sudo apt --fix-broken install ./sops.deb
             sudo apt-get update
             sudo apt-get install sops
           else
