@@ -18,7 +18,7 @@ on:
         required: true
         default: "ap-south-1"
       docker_image:
-        description: "Docker image to deploy (e.g., egov-mdms-service:core-2.9-lts)"
+        description: "Docker image to deploy"
         required: true
       deploy_secrets:
         description: "Set to true to deploy secrets"
@@ -41,7 +41,7 @@ jobs:
           ref: ${{ github.event.inputs.branch_name }}
         
       - name: Install SOPS (if not installed)
-      if: ${{ github.event.inputs.deploy_secrets == 'true' }}
+        if: ${{ github.event.inputs.deploy_secrets == 'true' }}
         run: |
           echo "Checking if SOPS is installed..."
           if ! command -v sops &> /dev/null; then
@@ -62,7 +62,7 @@ jobs:
       #     sudo chmod +x /usr/bin/yq
 
       - name: Decrypt secrets file (without applying to cluster)
-      if: ${{ github.event.inputs.deploy_secrets == 'true' }}
+        if: ${{ github.event.inputs.deploy_secrets == 'true' }}
         run: |
           SECRETS_FILE="./deploy-as-code/helm/environments/${{ github.event.inputs.env_file }}-secrets.yaml"
           echo "Decrypting secrets file: ${SECRETS_FILE}"
