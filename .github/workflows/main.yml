@@ -74,18 +74,18 @@ jobs:
         env:
           PGP_PRIVATE_KEY: ${{ secrets.PGP_PRIVATE_KEY }}
 
-    - name: Decrypt secrets file (without applying to cluster)
-      run: |
-        SECRETS_FILE="./deploy-as-code/helm/environments/${{ github.event.inputs.env_file }}-secrets.yaml"
-        echo "Decrypting secrets file: ${SECRETS_FILE}"
-        
-        # Specify the path to .sops.yaml if it's not in the root directory
-        SOPS_CONFIG_PATH="./deploy-as-code/helm/.sops.yaml" # Update this if your .sops.yaml is in a different location
-        
-        # Decrypt the secrets using the .sops.yaml config file
-        sops --config $SOPS_CONFIG_PATH --decrypt $SECRETS_FILE > decrypted-secrets.yaml
-        # Optionally, print the decrypted content to verify
-        # cat decrypted-secrets.yaml
+      - name: Decrypt secrets file (without applying to cluster)
+        run: |
+          SECRETS_FILE="./deploy-as-code/helm/environments/${{ github.event.inputs.env_file }}-secrets.yaml"
+          echo "Decrypting secrets file: ${SECRETS_FILE}"
+          
+          # Specify the path to .sops.yaml if it's not in the root directory
+          SOPS_CONFIG_PATH="./deploy-as-code/helm/.sops.yaml" # Update this if your .sops.yaml is in a different location
+          
+          # Decrypt the secrets using the .sops.yaml config file
+          sops --config $SOPS_CONFIG_PATH --decrypt $SECRETS_FILE > decrypted-secrets.yaml
+          # Optionally, print the decrypted content to verify
+          # cat decrypted-secrets.yaml
 
       # - name: Decrypt Secrets File
       #   id: fetch_secrets
