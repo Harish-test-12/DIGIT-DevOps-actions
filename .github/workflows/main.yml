@@ -67,12 +67,12 @@ jobs:
 
 
       # Step 3: Set up SOPS age key
-      - name: Set up GPG (PGP key)
-        run: |
-          echo "${{ secrets.PGP_PRIVATE_KEY }}" > private.key
-          gpg --import private.key
-        env:
-          PGP_PRIVATE_KEY: ${{ secrets.PGP_PRIVATE_KEY }}
+      # - name: Set up GPG (PGP key)
+      #   run: |
+      #     echo "${{ secrets.PGP_PRIVATE_KEY }}" > private.key
+      #     gpg --import private.key
+      #   env:
+      #     PGP_PRIVATE_KEY: ${{ secrets.PGP_PRIVATE_KEY }}
 
       - name: Decrypt secrets file (without applying to cluster)
         run: |
