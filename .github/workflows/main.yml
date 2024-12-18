@@ -67,28 +67,37 @@ jobs:
 
 
       # Step 3: Set up SOPS age key
-      - name: Set Up SOPS Key
+      - name: Set up GPG (PGP key)
         run: |
-          echo "${{ secrets.SOPS_AGE_KEY }}" > ./sops-age-key.txt
-          export SOPS_AGE_KEY_FILE=./sops-age-key.txt
+          echo "${{ secrets.PGP_PRIVATE_KEY }}" > private.key
+          gpg --import private.key
         env:
-          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          PGP_PRIVATE_KEY: ${{ secrets.PGP_PRIVATE_KEY }}
 
-      - name: Decrypt Secrets File
-        id: fetch_secrets
+      - name: Decrypt secrets file only (without applying to cluster)
         run: |
-          # Define the path to secrets file
-          SECRETS_FILE_PATH="./deploy-as-code/helm/environments/${{ github.event.inputs.env_file }}-secrets.yaml"
-
-          # Check if the secrets file exists
-          if [ ! -f "$SECRETS_FILE_PATH" ]; then
-            echo "Error: Secrets file not found at $SECRETS_FILE_PATH"
-            exit 1
-          fi
+          SECRETS_FILE="./deploy-as-code/helm/environments/${{ github.event.inputs.env_file }}-secrets.yaml"
+          echo "Decrypting secrets file: ${SECRETS_FILE}"
           
-          # Decrypt only the secrets file
-          echo "Decrypting secrets file: $SECRETS_FILE_PATH"
-          sops -d "$SECRETS_FILE_PATH" | kubectl apply -f -
+          # Decrypt the secrets and display or store it (but not apply it)
+          sops --decrypt $SECRETS_FILE > decrypted-secrets.yaml
+          # cat decrypted-secrets.yaml 
+
+      # - name: Decrypt Secrets File
+      #   id: fetch_secrets
+      #   run: |
+      #     # Define the path to secrets file
+      #     SECRETS_FILE="./deploy-as-code/helm/environments/${{ github.event.inputs.env_file }}-secrets.yaml"
+
+      #     # Check if the secrets file exists
+      #     if [ ! -f "$SECRETS_FILE}" ]; then
+      #       echo "Error: Secrets file not found at $SECRETS_FILE}"
+      #       exit 1
+      #     fi
+          
+      #     # Decrypt only the secrets file
+      #     echo "Decrypting secrets file: ${SECRETS_FILE}"
+      #     sops -d "$SECRETS_FILE}" | kubectl apply -f -
 
       # Step 2: Fetch and Source the Env File
       - name: Fetch and Source Env File
