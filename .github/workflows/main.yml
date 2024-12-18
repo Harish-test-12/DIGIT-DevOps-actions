@@ -83,9 +83,9 @@ jobs:
           SOPS_CONFIG_PATH="./deploy-as-code/helm/.sops.yaml" # Update this if your .sops.yaml is in a different location
           
           # Decrypt the secrets using the .sops.yaml config file
-          sops --config $SOPS_CONFIG_PATH --decrypt $SECRETS_FILE > decrypted-secrets.yaml
+          sops --config $SOPS_CONFIG_PATH --decrypt $SECRETS_FILE -i
           # Optionally, print the decrypted content to verify
-          cat decrypted-secrets.yaml | grep "admin-email"
+          cat $SECRETS_FILE | grep "admin-email"
 
       # - name: Decrypt Secrets File
       #   id: fetch_secrets
