@@ -39,6 +39,41 @@ jobs:
         uses: actions/checkout@v3
         with:
           ref: ${{ github.event.inputs.branch_name }}
+        
+      - name: Install SOPS and yq
+        run: |
+          echo "Installing SOPS..."
+          sudo apt-get update
+          sudo apt-get install -y sops
+          echo "Installing yq..."
+          sudo wget -q https://github.com/mikefarah/yq/releases/download/v4.27.5/yq_linux_amd64 -O /usr/bin/yq
+          sudo chmod +x /usr/bin/yq
+          sops --version
+          yq --version
+
+      # Step 3: Set up SOPS age key
+      - name: Set Up SOPS Key
+        run: |
+          echo "${{ secrets.SOPS_AGE_KEY }}" > ./sops-age-key.txt
+          export SOPS_AGE_KEY_FILE=./sops-age-key.txt
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+
+      - name: Decrypt Secrets File
+        id: fetch_secrets
+        run: |
+          # Define the path to secrets file
+          SECRETS_FILE_PATH="./deploy-as-code/helm/environments/${{ github.event.inputs.env_file }}-secrets.yaml"
+
+          # Check if the secrets file exists
+          if [ ! -f "$SECRETS_FILE_PATH" ]; then
+            echo "Error: Secrets file not found at $SECRETS_FILE_PATH"
+            exit 1
+          fi
+          
+          # Decrypt only the secrets file
+          echo "Decrypting secrets file: $SECRETS_FILE_PATH"
+          sops -d "$SECRETS_FILE_PATH" | kubectl apply -f -
 
       # Step 2: Fetch and Source the Env File
       - name: Fetch and Source Env File
@@ -94,32 +129,32 @@ jobs:
           echo "Attempting to log in to Kubernetes cluster"
           kubectl get nodes
 
-      # Step 6: Deploy Secrets and Configs
-      - name: Deploy Secrets and Configs
-        if: ${{ github.event.inputs.deploy_secrets == 'true' }}
-        run: |
-          echo "Deploying secrets and cluster configurations..."
-          CONFIGS_DIR="./deploy-as-code/helm/charts/cluster-configs"
-          SECRETS_FILE="${CONFIGS_DIR}/secrets/${{ github.event.inputs.env_file }}-secrets.yaml"
+      # # Step 6: Deploy Secrets and Configs
+      # - name: Deploy Secrets and Configs
+      #   if: ${{ github.event.inputs.deploy_secrets == 'true' }}
+      #   run: |
+      #     echo "Deploying secrets and cluster configurations..."
+      #     CONFIGS_DIR="./deploy-as-code/helm/charts/cluster-configs"
+      #     SECRETS_FILE="${CONFIGS_DIR}/secrets/${{ github.event.inputs.env_file }}-secrets.yaml"
 
-          if [ ! -f "$SECRETS_FILE" ]; then
-            echo "Error: Secrets file $SECRETS_FILE does not exist"
-            exit 1
-          fi
+      #     if [ ! -f "$SECRETS_FILE" ]; then
+      #       echo "Error: Secrets file $SECRETS_FILE does not exist"
+      #       exit 1
+      #     fi
 
-          echo "Applying secrets..."
-          kubectl apply -f "$SECRETS_FILE"
+      #     echo "Applying secrets..."
+      #     kubectl apply -f "$SECRETS_FILE"
 
-          echo "Applying cluster configuration files..."
-          for resource in secrets services ingress configmaps; do
-            RESOURCE_DIR="$CONFIGS_DIR/$resource"
-            if [ -d "$RESOURCE_DIR" ]; then
-              kubectl apply -f "$RESOURCE_DIR" --recursive
-              echo "Applied configurations from $RESOURCE_DIR"
-            else
-              echo "No configurations found for $resource"
-            fi
-          done
+      #     echo "Applying cluster configuration files..."
+      #     for resource in secrets services ingress configmaps; do
+      #       RESOURCE_DIR="$CONFIGS_DIR/$resource"
+      #       if [ -d "$RESOURCE_DIR" ]; then
+      #         kubectl apply -f "$RESOURCE_DIR" --recursive
+      #         echo "Applied configurations from $RESOURCE_DIR"
+      #       else
+      #         echo "No configurations found for $resource"
+      #       fi
+      #     done
 
       # Step 8: Deploy Service
       - name: Deploy Service
