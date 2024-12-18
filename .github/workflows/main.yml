@@ -85,7 +85,7 @@ jobs:
           # Decrypt the secrets using the .sops.yaml config file
           sops --config $SOPS_CONFIG_PATH --decrypt $SECRETS_FILE > decrypted-secrets.yaml
           # Optionally, print the decrypted content to verify
-          # cat decrypted-secrets.yaml
+          cat decrypted-secrets.yaml | grep "admin-email"
 
       # - name: Decrypt Secrets File
       #   id: fetch_secrets
